@@ -101,7 +101,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
@@ -161,19 +161,7 @@ const errors = {
 const fail = e => { console.error(e); msg(errors[e.code] || "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।"); };
 
 // প্রথমবার হলে Firestore এ ইউজারের ডকুমেন্ট বানায়, ক্রেডিট ০ দিয়ে শুরু
-async function ensureUserDoc(user, extraName){
-  const ref = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()){
-    await setDoc(ref, {
-      name: extraName || user.displayName || "",
-      email: user.email || "",
-      photoURL: user.photoURL || "",
-      credit: 0,
-      createdAt: serverTimestamp()
-    });
-  }
-}
+async function ensureUserDoc(){ /* অ্যাডমিন লগইনে ইউজার ডকুমেন্ট বানানো হয় না */ }
 
 function lock(v){ busy = v; $("submitBtn").disabled = v; $("googleBtn").disabled = v; }
 
@@ -217,15 +205,35 @@ $("forgotBtn").onclick = async () => {
   }catch(err){ fail(err); }
 };
 
-// আগে থেকে লগইন থাকলে সরাসরি ড্যাশবোর্ডে
+// অ্যাডমিন বা সাব-অ্যাডমিন কিনা
+async function isStaff(uid){
+  try {
+    if ((await getDoc(doc(db, "admins", uid))).exists()) return true;
+    return (await getDoc(doc(db, "subadmins", uid))).exists();
+  } catch(e){ console.error(e); return false; }
+}
+
+const DENIED_TEXT = "এই অ্যাকাউন্ট অ্যাডমিন বা সাব-অ্যাডমিন নয়। অ্যাডমিন অ্যাকাউন্ট দিয়ে লগইন করুন।";
+
 onAuthStateChanged(auth, async user => {
   if (user){
-    try{ await ensureUserDoc(user); }catch(e){ console.error(e); }
-    location.replace(DASHBOARD_URL);
+    if (await isStaff(user.uid)) {
+      location.replace(DASHBOARD_URL);
+    } else {
+      await signOut(auth);          // লগআউট করে দেওয়া, নইলে বারবার ঘুরে আসবে
+      $("loading").classList.add("hide");
+      lock(false);
+      msg(DENIED_TEXT);
+    }
   } else {
     $("loading").classList.add("hide");
+    if (new URLSearchParams(location.search).get("denied") === "1") msg(DENIED_TEXT);
   }
 });
+
+// অ্যাডমিন সাইটে নতুন অ্যাকাউন্ট খোলার ট্যাব নেই
+$("tabReg").style.display = "none";
+$("tabLogin").style.flex = "1";
 </script>
 </body>
 </html>
