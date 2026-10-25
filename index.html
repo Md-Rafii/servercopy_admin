@@ -151,8 +151,8 @@ else {
     }
   } catch(e){ console.error(e); }
   if (!role) {
-    alert("এই পেজ শুধু অ্যাডমিন ও সাব-অ্যাডমিনের জন্য।");
-    location.replace("https://md-rafii.github.io/amar_wallet/deshboard/index.html");
+    await logout();   // লগআউট করে আবার লগইন পেজে
+    location.replace("./login.html?denied=1");
   } else {
     window.__role = role; window.__subName = subName;
     $("gate").hidden = true;
