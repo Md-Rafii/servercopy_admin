@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF2E6; --card:#FFFFFF; --ink:#12261F; --muted:#5B6B62;
+    --green:#2F6B4F; --green-dark:#22503A; --gold:#E8B33C; --line:#D5DDCB; --err:#B3261E;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{min-height:100%}
+  body{font-family:"Hind Siliguri",system-ui,sans-serif;background:var(--paper);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:100%;max-width:880px;display:grid;grid-template-columns:1fr 1fr;background:var(--card);
+    border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(18,38,31,.12)}
+  .brand{background:var(--green);color:#fff;padding:40px 34px;display:flex;flex-direction:column;justify-content:space-between;gap:30px}
+  .coin{width:64px;height:64px;border-radius:50%;background:var(--gold);color:var(--ink);
+    display:grid;place-items:center;font-size:32px;font-weight:700;box-shadow:inset 0 0 0 5px rgba(18,38,31,.12)}
+  .brand h1{font-size:30px;line-height:1.25;font-weight:700}
+  .brand p{opacity:.85;margin-top:10px;line-height:1.6}
+  .credit-demo{background:rgba(255,255,255,.12);border-radius:14px;padding:16px 18px}
+  .credit-demo small{opacity:.8}
+  .credit-demo b{display:block;font-size:28px;margin-top:2px}
+  .form{padding:36px 34px}
+  .tabs{display:flex;background:var(--paper);border-radius:12px;padding:4px;margin-bottom:22px}
+  .tabs button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}
+  .tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+  label{display:block;font-size:14px;font-weight:500;margin:14px 0 6px}
+  input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(47,107,79,.18)}
+  .btn{width:100%;margin-top:20px;padding:13px;border:0;border-radius:10px;font:inherit;font-weight:600;font-size:16px;
+    background:var(--green);color:#fff;cursor:pointer}
+  .btn:hover{background:var(--green-dark)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .btn.google{background:#fff;color:var(--ink);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;gap:10px;margin-top:0}
+  .btn.google:hover{background:var(--paper)}
+  .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:18px 0}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+  .link{background:none;border:0;color:var(--green);font:inherit;font-size:14px;cursor:pointer;margin-top:12px;padding:0}
+  .msg{margin-top:14px;font-size:14px;min-height:20px;line-height:1.5}
+  .msg.err{color:var(--err)} .msg.ok{color:var(--green)}
+  .hide{display:none !important}
+  #loading{position:fixed;inset:0;background:var(--paper);display:grid;place-items:center;font-weight:600;color:var(--muted);z-index:9}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  @media (max-width:720px){
+    .wrap{grid-template-columns:1fr}
+    .brand{padding:26px 24px;gap:18px}.credit-demo{display:none}
+    .brand h1{font-size:24px}.form{padding:26px 22px}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">লোড হচ্ছে…</div>
+
+<main class="wrap">
+  <section class="brand">
+    <div>
+      <div class="coin">৳</div>
+      <h1 style="margin-top:22px">আমার ওয়ালেট</h1>
+      <p>পেমেন্ট করুন, সাথে সাথে আপনার অ্যাকাউন্টে ক্রেডিট পান। যত টাকা, তত ক্রেডিট।</p>
+    </div>
+    <div class="credit-demo"><small>আপনার ক্রেডিট</small><b>১০০ টাকা = ১০০ ক্রেডিট</b></div>
+  </section>
+
+  <section class="form">
+    <div class="tabs" role="tablist">
+      <button id="tabLogin" class="on" type="button">লগইন</button>
+      <button id="tabReg" type="button">নতুন অ্যাকাউন্ট</button>
+    </div>
+
+    <button id="googleBtn" class="btn google" type="button">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.5 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Google দিয়ে চালিয়ে যান
+    </button>
+
+    <div class="or">অথবা ইমেইল দিয়ে</div>
+
+    <form id="authForm" novalidate>
+      <div id="nameRow" class="hide">
+        <label for="name">আপনার নাম</label>
+        <input id="name" type="text" autocomplete="name" placeholder="যেমন: রাফি">
+      </div>
+      <label for="email">ইমেইল</label>
+      <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+      <label for="password">পাসওয়ার্ড</label>
+      <input id="password" type="password" autocomplete="current-password" placeholder="কমপক্ষে ৬ অক্ষর" required>
+      <button id="submitBtn" class="btn" type="submit">লগইন করুন</button>
+    </form>
+
+    <button id="forgotBtn" class="link" type="button">পাসওয়ার্ড ভুলে গেছেন?</button>
+    <div id="msg" class="msg" role="alert"></div>
+  </section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBK_2UagTcClpVl2Wrmtbxz4MviBdhZ8gM",
+  authDomain: "my-web-8526f.firebaseapp.com",
+  projectId: "my-web-8526f",
+  storageBucket: "my-web-8526f.firebasestorage.app",
+  messagingSenderId: "971545805623",
+  appId: "1:971545805623:web:0f7ef878d70fcbbeda10b2",
+  measurementId: "G-ZCFTZX070Q"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// লগইন সফল হলে যেখানে যাবে
+const DASHBOARD_URL = "./index.html";
+
+const $ = id => document.getElementById(id);
+const msg = (text, type="err") => { $("msg").textContent = text; $("msg").className = "msg " + type; };
+
+let mode = "login";
+let busy = false;
+
+function setMode(m){
+  mode = m;
+  const reg = m === "register";
+  $("tabLogin").classList.toggle("on", !reg);
+  $("tabReg").classList.toggle("on", reg);
+  $("nameRow").classList.toggle("hide", !reg);
+  $("submitBtn").textContent = reg ? "অ্যাকাউন্ট খুলুন" : "লগইন করুন";
+  $("password").autocomplete = reg ? "new-password" : "current-password";
+  $("forgotBtn").classList.toggle("hide", reg);
+  msg("");
+}
+$("tabLogin").onclick = () => setMode("login");
+$("tabReg").onclick   = () => setMode("register");
+
+const errors = {
+  "auth/invalid-email": "ইমেইল ঠিকমতো লিখুন।",
+  "auth/missing-password": "পাসওয়ার্ড লিখুন।",
+  "auth/weak-password": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের দিন।",
+  "auth/email-already-in-use": "এই ইমেইলে আগেই অ্যাকাউন্ট আছে। লগইন করুন।",
+  "auth/invalid-credential": "ইমেইল বা পাসওয়ার্ড ভুল।",
+  "auth/user-not-found": "এই ইমেইলে কোনো অ্যাকাউন্ট নেই।",
+  "auth/wrong-password": "পাসওয়ার্ড ভুল।",
+  "auth/too-many-requests": "অনেকবার চেষ্টা হয়েছে। একটু পরে আবার চেষ্টা করুন।",
+  "auth/network-request-failed": "ইন্টারনেট সংযোগ চেক করুন।",
+  "auth/popup-closed-by-user": "Google উইন্ডো বন্ধ হয়ে গেছে। আবার চেষ্টা করুন।",
+  "auth/popup-blocked": "ব্রাউজার পপআপ আটকে দিয়েছে। পপআপ অনুমতি দিন।",
+  "auth/unauthorized-domain": "এই ডোমেইন Firebase এ অনুমোদিত নয় (Authorized domains এ যোগ করুন)।"
+};
+const fail = e => { console.error(e); msg(errors[e.code] || "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।"); };
+
+// প্রথমবার হলে Firestore এ ইউজারের ডকুমেন্ট বানায়, ক্রেডিট ০ দিয়ে শুরু
+async function ensureUserDoc(user, extraName){
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()){
+    await setDoc(ref, {
+      name: extraName || user.displayName || "",
+      email: user.email || "",
+      photoURL: user.photoURL || "",
+      credit: 0,
+      createdAt: serverTimestamp()
+    });
+  }
+}
+
+function lock(v){ busy = v; $("submitBtn").disabled = v; $("googleBtn").disabled = v; }
+
+$("authForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (busy) return;
+  const email = $("email").value.trim();
+  const pass  = $("password").value;
+  const name  = $("name").value.trim();
+  if (!email || !pass) return msg("ইমেইল ও পাসওয়ার্ড দুটোই লিখুন।");
+  if (mode === "register" && !name) return msg("আপনার নাম লিখুন।");
+  lock(true); msg("");
+  try{
+    if (mode === "register"){
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: name });
+      await ensureUserDoc(cred.user, name);
+    } else {
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      await ensureUserDoc(cred.user);
+    }
+    // onAuthStateChanged নিজেই ড্যাশবোর্ডে পাঠাবে
+  }catch(err){ fail(err); lock(false); }
+});
+
+$("googleBtn").onclick = async () => {
+  if (busy) return;
+  lock(true); msg("");
+  try{
+    const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+    await ensureUserDoc(cred.user);
+  }catch(err){ fail(err); lock(false); }
+};
+
+$("forgotBtn").onclick = async () => {
+  const email = $("email").value.trim();
+  if (!email) return msg("আগে ইমেইল ঘরে আপনার ইমেইল লিখুন।");
+  try{
+    await sendPasswordResetEmail(auth, email);
+    msg("পাসওয়ার্ড রিসেট লিংক ইমেইলে পাঠানো হয়েছে।", "ok");
+  }catch(err){ fail(err); }
+};
+
+// আগে থেকে লগইন থাকলে সরাসরি ড্যাশবোর্ডে
+onAuthStateChanged(auth, async user => {
+  if (user){
+    try{ await ensureUserDoc(user); }catch(e){ console.error(e); }
+    location.replace(DASHBOARD_URL);
+  } else {
+    $("loading").classList.add("hide");
+  }
+});
+</script>
+</body>
+</html>
