@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Panel</title>
+<style id="authHider">html{visibility:hidden}</style>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:#eee;font-family:Arial,sans-serif;color:#333}
+.page{max-width:900px;min-height:100vh;margin:auto;background:#fff}
+.header{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#245333;color:#fff}
+.header h2{margin:0;font-size:19px}
+.header a,.header button{color:#fff;font-size:13px;text-decoration:none;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);border-radius:5px;padding:7px 11px;cursor:pointer}
+main{padding:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat{background:#126b3c;color:#fff;border-radius:8px;padding:14px;text-align:center}
+.stat b{display:block;font-size:24px;margin-top:4px}
+.stat.warn{background:#b3261e}
+.box{border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:14px}
+.box h3{margin:0 0 10px;font-size:16px;color:#245333}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input{padding:10px;border:1px solid #ccc;border-radius:5px;font-size:14px;min-width:0}
+input.num{width:110px}
+.search{width:100%;margin-bottom:10px}
+button.go{border:0;border-radius:5px;padding:10px 14px;background:#168548;color:#fff;cursor:pointer;font-size:14px}
+button.go:disabled{opacity:.6}
+.user{border-top:1px solid #eee;padding:12px 0}
+.user:first-child{border-top:0}
+.uname{font-weight:bold}
+.umail{font-size:12px;color:#777;word-break:break-all}
+.meta{display:flex;gap:16px;font-size:13px;margin:6px 0 8px}
+.hint{font-size:12px;color:#777;margin:6px 0 0}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:6px;font-size:14px;z-index:9}
+#gate{position:fixed;inset:0;background:#eee;display:grid;place-items:center;font-weight:bold;color:#555;z-index:8}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="gate">যাচাই হচ্ছে…</div>
+<div class="page">
+  <header class="header">
+    <h2 id="ttl">Admin Panel</h2>
+    <div class="row"><a href="../deshboard/index.html">Dashboard</a><button id="logoutBtn" type="button">Logout</button></div>
+  </header>
+  <main>
+    <p class="hint" id="whoami" style="margin:0 0 12px;word-break:break-all"></p>
+    <div class="grid mainOnly">
+      <div class="stat" id="stockCard">API স্টক বাকি<b id="tokens">…</b></div>
+      <div class="stat">মোট সফল API কল<b id="used">…</b></div>
+      <div class="stat">মোট ইউজার<b id="ucount">…</b></div>
+    </div>
+
+    <div class="box">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">পেন্ডিং পেমেন্ট রিকোয়েস্ট <span><b id="pcount">0</b> <button id="reqReload" class="go" type="button" style="padding:6px 10px;font-size:13px">Reload</button></span></h3>
+      <div id="reqList">লোড হচ্ছে…</div>
+    </div>
+
+    <div class="box mainOnly">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">হিসাব <button id="accReload" class="go" type="button" style="padding:6px 10px;font-size:13px">Reload</button></h3>
+      <div class="grid" style="margin-bottom:10px">
+        <div class="stat">মোট টোকেন কেনার খরচ<b id="accSpent">…</b></div>
+        <div class="stat">মোট পেমেন্ট রিসিভ<b id="accRecv">…</b></div>
+        <div class="stat" id="accNetCard">লাভ / ক্ষতি<b id="accNet">…</b></div>
+      </div>
+      <p class="hint" id="accNote"></p>
+      <h3 style="margin:14px 0 6px;font-size:14px">টোকেন কেনার তালিকা (সর্বশেষ ২০টা)</h3>
+      <div id="purList"></div>
+    </div>
+
+    <div class="box mainOnly">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">সাব-অ্যাডমিন ও কাজের রিপোর্ট <button id="repReload" class="go" type="button" style="padding:6px 10px;font-size:13px">Reload</button></h3>
+      <div id="subStats">লোড হচ্ছে…</div>
+      <div class="row" style="margin:14px 0 8px"><select id="repFilter" style="padding:10px;border:1px solid #ccc;border-radius:5px;flex:1"><option value="">সব প্রসেস করা রিকোয়েস্ট</option></select></div>
+      <div id="repList"></div>
+      <p class="hint">নতুন সাব-অ্যাডমিন বানাতে নিচের ইউজার তালিকায় ইউজারের পাশে "Sub-admin বানান" চাপুন। সাব-অ্যাডমিন শুধু পেমেন্ট অ্যাপ্রুভ/বাতিল করতে পারবে।</p>
+    </div>
+
+    <div class="box mainOnly">
+      <h3>API স্টক যোগ করুন</h3>
+      <div class="row">
+        <input id="stockAdd" class="num" type="number" min="1" step="1" placeholder="কয়টা টোকেন">
+        <input id="stockCost" class="num" type="number" min="0" step="0.01" placeholder="প্রতিটা কত টাকা">
+        <button id="stockBtn" class="go" type="button">Add Stock</button>
+      </div>
+      <p class="hint">প্রতিটি সফল Search এ স্টক থেকে ১টা করে কমবে। স্টক 0 হলে ইউজাররা Search করতে পারবে না। প্রতিটা টোকেনের কেনা দাম লিখলে নিচের "হিসাব" এ খরচ জমা হবে।</p>
+    </div>
+
+    <div class="box mainOnly">
+      <h3>Search এর চার্জ</h3>
+      <div class="row">
+        <span>বর্তমান: <b id="priceNow">…</b> ক্রেডিট</span>
+        <input id="priceNew" class="num" type="number" min="0" step="1" placeholder="নতুন">
+        <button id="priceBtn" class="go" type="button">Update</button>
+      </div>
+    </div>
+
+    <div class="box mainOnly">
+      <h3>পেমেন্ট সেটিংস (ইউজার যে নম্বরে টাকা পাঠাবে)</h3>
+      <div class="row" style="margin-bottom:8px">
+        <input id="bkNum" type="tel" placeholder="বিকাশ নম্বর" style="flex:1">
+        <select id="bkType" style="padding:10px;border:1px solid #ccc;border-radius:5px"><option value="personal">Personal</option><option value="agent">Agent</option></select>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="ngNum" type="tel" placeholder="নগদ নম্বর" style="flex:1">
+        <select id="ngType" style="padding:10px;border:1px solid #ccc;border-radius:5px"><option value="personal">Personal</option><option value="agent">Agent</option></select>
+      </div>
+      <div class="row">
+        <input id="minAmt" class="num" type="number" min="1" step="1" placeholder="মিনিমাম টাকা">
+        <button id="paySave" class="go" type="button">Save</button>
+      </div>
+      <p class="hint">একটা নম্বর ফাঁকা রাখলে সেই মাধ্যম ইউজারের কাছে দেখাবে না। ১ টাকা = ১ ক্রেডিট।</p>
+    </div>
+
+    <div class="box mainOnly">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">ইউজার তালিকা <button id="reloadBtn" class="go" type="button" style="padding:6px 10px;font-size:13px">Reload</button></h3>
+      <input id="q" class="search" type="search" placeholder="নাম বা ইমেইল দিয়ে খুঁজুন">
+      <div id="list"></div>
+    </div>
+  </main>
+</div>
+<div id="toast" hidden></div>
+
+<script type="module">
+import { auth, db, logout } from "../auth-guard.js";
+import { doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch, collection, query, where, onSnapshot, runTransaction, increment, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const bn = n => Number(n || 0).toLocaleString("bn-BD");
+const money = n => "৳" + Number(n || 0).toLocaleString("bn-BD", { maximumFractionDigits: 2 });
+const stockRef = doc(db, "settings", "stock");
+const priceRef = doc(db, "settings", "pricing");
+
+$("logoutBtn").onclick = logout;
+
+let tt;
+function toast(t){ const el=$("toast"); el.textContent=t; el.hidden=false; clearTimeout(tt); tt=setTimeout(()=>el.hidden=true,2800); }
+
+await auth.authStateReady();
+const me = auth.currentUser;
+if (!me) { /* গার্ড লগইনে পাঠাবে */ }
+else {
+  let role = null, subName = "";
+  try {
+    if ((await getDoc(doc(db, "admins", me.uid))).exists()) role = "admin";
+    else {
+      const sd = await getDoc(doc(db, "subadmins", me.uid));
+      if (sd.exists()) { role = "sub"; subName = sd.data().name || ""; }
+    }
+  } catch(e){ console.error(e); }
+  if (!role) {
+    alert("এই পেজ শুধু অ্যাডমিন ও সাব-অ্যাডমিনের জন্য।");
+    location.replace("../deshboard/index.html");
+  } else {
+    window.__role = role; window.__subName = subName;
+    $("gate").hidden = true;
+    start();
+  }
+}
+
+function start(){
+  const role = window.__role, subName = window.__subName;
+  const myName = role === "admin" ? ("অ্যাডমিন (" + (me.displayName || me.email || "") + ")") : subName;
+  document.querySelectorAll(".mainOnly").forEach(el => el.hidden = role !== "admin");
+  if (role === "sub") $("ttl").textContent = "Sub-Admin Panel";
+  $("whoami").textContent = (role === "admin" ? "অ্যাডমিন" : "সাব-অ্যাডমিন (" + subName + ")") + " | " + (me.email || "") + " | UID: " + me.uid;
+  if (role === "admin") {
+  // স্টক
+  onSnapshot(stockRef, s => {
+    const d = s.data() || {};
+    const t = d.tokens || 0;
+    $("tokens").textContent = bn(t);
+    $("used").textContent = bn(d.used || 0);
+    $("stockCard").classList.toggle("warn", t <= 10);
+  });
+  $("stockBtn").onclick = async () => {
+    const n = parseInt($("stockAdd").value, 10);
+    const cost = parseFloat($("stockCost").value);
+    if (!(n > 0)) return toast("কয়টা টোকেন যোগ করবেন লিখুন।");
+    if (!(cost >= 0)) return toast("প্রতিটা টোকেনের কেনা দাম লিখুন (ফ্রি হলে 0)।");
+    const total = Math.round(n * cost * 100) / 100;
+    if (!confirm(bn(n) + " টা টোকেন, প্রতিটা " + money(cost) + ", মোট " + money(total) + " — যোগ করবেন?")) return;
+    $("stockBtn").disabled = true;
+    try {
+      const batch = writeBatch(db);
+      batch.set(stockRef, { tokens: increment(n) }, { merge: true });
+      batch.set(doc(collection(db, "tokenPurchases")), { qty: n, unitCost: cost, total, createdAt: serverTimestamp(), by: me.uid });
+      await batch.commit();
+      $("stockAdd").value = ""; $("stockCost").value = "";
+      toast(bn(n) + " টা স্টক যোগ হয়েছে।");
+      loadPurchases();
+    } catch(e){ console.error(e); toast("স্টক যোগ হয়নি: " + (e.code || e.message)); }
+    $("stockBtn").disabled = false;
+  };
+
+  // মূল্য
+  onSnapshot(priceRef, s => { $("priceNow").textContent = s.exists() ? bn(s.data().searchPrice) : "সেট নেই"; });
+  $("priceBtn").onclick = async () => {
+    const n = parseInt($("priceNew").value, 10);
+    if (!(n >= 0)) return toast("সঠিক সংখ্যা লিখুন।");
+    $("priceBtn").disabled = true;
+    try { await setDoc(priceRef, { searchPrice: n }, { merge: true }); $("priceNew").value = ""; toast("চার্জ আপডেট হয়েছে।"); }
+    catch(e){ console.error(e); toast("আপডেট হয়নি: " + (e.code || e.message)); }
+    $("priceBtn").disabled = false;
+  };
+
+  // ---- পেমেন্ট সেটিংস ----
+  const payRef = doc(db, "settings", "payment");
+  getDoc(payRef).then(s => {
+    const d = s.data() || {};
+    $("bkNum").value = d.bkashNumber || ""; $("bkType").value = d.bkashType || "personal";
+    $("ngNum").value = d.nagadNumber || ""; $("ngType").value = d.nagadType || "personal";
+    $("minAmt").value = d.minAmount || "";
+  }).catch(console.error);
+  $("paySave").onclick = async () => {
+    const bk = $("bkNum").value.trim(), ng = $("ngNum").value.trim(), mn = parseInt($("minAmt").value, 10);
+    if (!(mn > 0)) return toast("মিনিমাম টাকা লিখুন।");
+    if (!bk && !ng) return toast("অন্তত একটা নম্বর দিন।");
+    for (const n of [bk, ng]) if (n && !/^01[0-9]{9}$/.test(n)) return toast("নম্বর ১১ সংখ্যার হতে হবে (01XXXXXXXXX)।");
+    $("paySave").disabled = true;
+    try {
+      await setDoc(payRef, { bkashNumber: bk, bkashType: $("bkType").value, nagadNumber: ng, nagadType: $("ngType").value, minAmount: mn }, { merge: true });
+      toast("পেমেন্ট সেটিংস সেভ হয়েছে।");
+    } catch(e){ console.error(e); toast("সেভ হয়নি: " + (e.code || e.message)); }
+    $("paySave").disabled = false;
+  };
+
+  }
+
+  // ---- পেন্ডিং পেমেন্ট রিকোয়েস্ট ----
+  async function loadRequests(){
+    const box = $("reqList");
+    try {
+      const snap = await getDocs(query(collection(db, "paymentRequests"), where("status", "==", "pending")));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      $("pcount").textContent = bn(list.length);
+      box.textContent = "";
+      if (!list.length) { box.textContent = "কোনো পেন্ডিং রিকোয়েস্ট নেই।"; return; }
+      list.forEach(r => {
+        const row = document.createElement("div"); row.className = "user";
+        const n = document.createElement("div"); n.className = "uname"; n.textContent = (r.name || "(নাম নেই)") + " — " + bn(r.amount) + " টাকা";
+        const m = document.createElement("div"); m.className = "umail"; m.textContent = r.email || r.uid;
+        const meta = document.createElement("div"); meta.className = "meta"; meta.style.flexWrap = "wrap";
+        [r.method, "TrxID: " + r.trxId, "প্রেরক: " + r.senderNumber,
+         r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString("bn-BD") : ""].forEach(t => {
+          const sp = document.createElement("span"); sp.textContent = t; meta.append(sp);
+        });
+        const ctl = document.createElement("div"); ctl.className = "row";
+        const ok = document.createElement("button"); ok.type = "button"; ok.className = "go"; ok.textContent = "Approve";
+        const no = document.createElement("button"); no.type = "button"; no.className = "go"; no.style.background = "#b3261e"; no.textContent = "Reject";
+        ok.onclick = () => approve(r, ok, no);
+        no.onclick = () => reject(r, ok, no);
+        ctl.append(ok, no);
+        row.append(n, m, meta, ctl); box.append(row);
+      });
+    } catch(e){ console.error(e); $("reqList").textContent = "রিকোয়েস্ট লোড হয়নি — এরর: " + (e.code || e.message); }
+  }
+  $("reqReload").onclick = loadRequests;
+  loadRequests();
+  setInterval(loadRequests, 30000);
+
+  async function approve(r, ok, no){
+    if (!confirm((r.name || r.email) + " এর " + r.amount + " টাকা (" + r.method + ", " + r.trxId + ") অ্যাপ্রুভ করবেন? তাকে " + r.amount + " ক্রেডিট দেওয়া হবে।")) return;
+    ok.disabled = no.disabled = true;
+    const reqRef = doc(db, "paymentRequests", r.id);
+    const uref = doc(db, "users", r.uid);
+    const href = doc(collection(db, "users", r.uid, "paymentHistory"));
+    try {
+      await runTransaction(db, async tx => {
+        const rs = await tx.get(reqRef);
+        if (!rs.exists() || rs.data().status !== "pending") throw new Error("ALREADY");
+        const amt = rs.data().amount;
+        tx.update(uref, { credit: increment(amt), lastRequestId: r.id });
+        tx.update(reqRef, { status: "approved", reviewedAt: serverTimestamp(), reviewedBy: me.uid, reviewedByName: myName });
+        tx.set(href, { type: "manual", method: rs.data().method, amount: amt, trxId: rs.data().trxId,
+          senderNumber: rs.data().senderNumber, requestId: r.id, by: me.uid, createdAt: serverTimestamp() });
+      });
+      toast(bn(r.amount) + " ক্রেডিট যোগ হয়েছে।");
+    } catch(e){
+      console.error(e);
+      toast(e.message === "ALREADY" ? "এই রিকোয়েস্ট আগেই প্রক্রিয়া হয়েছে।" : "অ্যাপ্রুভ হয়নি: " + (e.code || e.message));
+    }
+    loadRequests(); loadUsers(); loadProcessed();
+  }
+
+  async function reject(r, ok, no){
+    const note = prompt("বাতিলের কারণ লিখুন (ইউজার দেখতে পাবে):", "TrxID মেলেনি");
+    if (note === null) return;
+    ok.disabled = no.disabled = true;
+    try {
+      await runTransaction(db, async tx => {
+        const reqRef = doc(db, "paymentRequests", r.id);
+        const rs = await tx.get(reqRef);
+        if (!rs.exists() || rs.data().status !== "pending") throw new Error("ALREADY");
+        tx.update(reqRef, { status: "rejected", note: note.trim(), reviewedAt: serverTimestamp(), reviewedBy: me.uid, reviewedByName: myName });
+      });
+      toast("রিকোয়েস্ট বাতিল করা হয়েছে।");
+    } catch(e){ console.error(e); toast(e.message === "ALREADY" ? "এই রিকোয়েস্ট আগেই প্রক্রিয়া হয়েছে।" : "হয়নি: " + (e.code || e.message)); }
+    loadRequests(); loadProcessed();
+  }
+
+  // ---- সাব-অ্যাডমিন ও রিপোর্ট (শুধু অ্যাডমিন) ----
+  let subs = new Map();
+  let processed = [];
+  // ---- হিসাব (শুধু অ্যাডমিন) ----
+  let purchases = [], purLoaded = false, procLoaded = false;
+  async function loadPurchases(){
+    if (role !== "admin") return;
+    try {
+      const sn = await getDocs(collection(db, "tokenPurchases"));
+      purchases = sn.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      purLoaded = true; renderAccounts();
+    } catch(e){ console.error(e); $("accNote").textContent = "হিসাব লোড হয়নি — এরর: " + (e.code || e.message); }
+  }
+  function renderAccounts(){
+    const spent = purchases.reduce((t, x) => t + (x.total || 0), 0);
+    const qty = purchases.reduce((t, x) => t + (x.qty || 0), 0);
+    const recv = processed.filter(r => r.status === "approved").reduce((t, r) => t + (r.amount || 0), 0);
+    $("accSpent").textContent = purLoaded ? money(spent) : "…";
+    $("accRecv").textContent = procLoaded ? money(recv) : "…";
+    if (purLoaded && procLoaded) {
+      const net = recv - spent;
+      $("accNet").textContent = (net < 0 ? "-" : "") + money(Math.abs(net));
+      $("accNetCard").classList.toggle("warn", net < 0);
+      $("accNote").textContent = "মোট কেনা টোকেন: " + bn(qty) + " টা" + (qty ? " • গড় দাম: " + money(spent / qty) : "") +
+        " • পেমেন্ট রিসিভ = অ্যাপ্রুভ করা সব রিকোয়েস্টের যোগফল (অ্যাডমিন নিজে হাতে যোগ করা ক্রেডিট ধরা হয়নি)।";
+    }
+    const box = $("purList"); box.textContent = "";
+    purchases.slice(0, 20).forEach(x => {
+      const row = document.createElement("div"); row.className = "user";
+      const n = document.createElement("div"); n.className = "uname"; n.textContent = bn(x.qty) + " টা × " + money(x.unitCost) + " = " + money(x.total);
+      const m = document.createElement("div"); m.className = "umail"; m.textContent = x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString("bn-BD") : "";
+      row.append(n, m); box.append(row);
+    });
+    if (!purchases.length) box.textContent = "এখনো কোনো টোকেন কেনার হিসাব নেই।";
+  }
+  $("accReload").onclick = () => { loadPurchases(); loadProcessed(); };
+  loadPurchases();
+
+
+  async function loadSubs(){
+    const ss = await getDocs(collection(db, "subadmins"));
+    subs = new Map(ss.docs.map(d => [d.id, d.data()]));
+  }
+  async function loadProcessed(){
+    if (role !== "admin") return;
+    try {
+      await loadSubs();
+      const rs = await getDocs(query(collection(db, "paymentRequests"), where("status", "in", ["approved", "rejected"])));
+      processed = rs.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.reviewedAt?.seconds || 0) - (a.reviewedAt?.seconds || 0));
+      procLoaded = true;
+      renderReport(); renderAccounts();
+    } catch(e){ console.error(e); $("subStats").textContent = "রিপোর্ট লোড হয়নি — এরর: " + (e.code || e.message); }
+  }
+  $("repReload").onclick = () => { loadProcessed(); loadUsers(); };
+  $("repFilter").addEventListener("change", renderReport);
+  const fmtT = r => r.reviewedAt?.toDate ? r.reviewedAt.toDate().toLocaleString("bn-BD") : "";
+
+  function renderReport(){
+    // কে কত কাজ করেছে
+    const stat = new Map();
+    processed.forEach(r => {
+      const k = r.reviewedBy || "?";
+      if (!stat.has(k)) stat.set(k, { name: r.reviewedByName || "অজানা", a: 0, r: 0, amt: 0 });
+      const x = stat.get(k);
+      if (r.status === "approved") { x.a++; x.amt += r.amount || 0; } else x.r++;
+    });
+    const box = $("subStats"); box.textContent = "";
+    const mk = (uid, name, email, isSub) => {
+      const x = stat.get(uid) || { a: 0, r: 0, amt: 0 };
+      const row = document.createElement("div"); row.className = "user";
+      const n = document.createElement("div"); n.className = "uname"; n.textContent = name + (isSub ? " (সাব-অ্যাডমিন)" : "");
+      row.append(n);
+      if (email) { const m = document.createElement("div"); m.className = "umail"; m.textContent = email; row.append(m); }
+      const meta = document.createElement("div"); meta.className = "meta"; meta.style.flexWrap = "wrap";
+      ["অ্যাপ্রুভ: " + bn(x.a), "বাতিল: " + bn(x.r), "মোট অ্যাপ্রুভ: ৳" + bn(x.amt)].forEach(t => { const sp = document.createElement("span"); sp.textContent = t; meta.append(sp); });
+      row.append(meta);
+      if (isSub) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "go"; b.style.background = "#b3261e"; b.textContent = "Sub-admin সরান";
+        b.onclick = () => removeSub(uid, name);
+        row.append(b);
+      }
+      box.append(row);
+    };
+    subs.forEach((v, uid) => mk(uid, v.name || v.email || uid, v.email, true));
+    stat.forEach((v, uid) => { if (!subs.has(uid)) mk(uid, v.name, "", false); });
+    if (!box.children.length) box.textContent = "এখনো কোনো সাব-অ্যাডমিন বা প্রসেস করা রিকোয়েস্ট নেই।";
+
+    // ফিল্টার
+    const sel = $("repFilter"), cur = sel.value;
+    sel.textContent = "";
+    const all = document.createElement("option"); all.value = ""; all.textContent = "সব প্রসেস করা রিকোয়েস্ট"; sel.append(all);
+    stat.forEach((v, uid) => { const o = document.createElement("option"); o.value = uid; o.textContent = v.name; sel.append(o); });
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : "";
+
+    // তালিকা (সর্বশেষ ৫০টা)
+    const lb = $("repList"); lb.textContent = "";
+    processed.filter(r => !sel.value || r.reviewedBy === sel.value).slice(0, 50).forEach(r => {
+      const row = document.createElement("div"); row.className = "user";
+      const n = document.createElement("div"); n.className = "uname";
+      n.textContent = (r.status === "approved" ? "✅ " : "❌ ") + (r.name || r.email || "") + " — ৳" + bn(r.amount);
+      const meta = document.createElement("div"); meta.className = "meta"; meta.style.flexWrap = "wrap";
+      [r.method, "TrxID: " + r.trxId, "কাজ করেছেন: " + (r.reviewedByName || "অজানা"), fmtT(r)].forEach(t => {
+        const sp = document.createElement("span"); sp.textContent = t; meta.append(sp);
+      });
+      row.append(n, meta);
+      if (r.status === "rejected" && r.note) { const nn = document.createElement("div"); nn.className = "umail"; nn.textContent = "কারণ: " + r.note; row.append(nn); }
+      lb.append(row);
+    });
+    if (!lb.children.length) lb.textContent = "কোনো রেকর্ড নেই।";
+  }
+
+  async function removeSub(uid, name){
+    if (!confirm(name + " কে সাব-অ্যাডমিন থেকে সরাবেন?")) return;
+    try { await deleteDoc(doc(db, "subadmins", uid)); toast("সরানো হয়েছে।"); }
+    catch(e){ console.error(e); toast("হয়নি: " + (e.code || e.message)); }
+    loadProcessed(); loadUsers();
+  }
+  async function toggleSub(u){
+    if (subs.has(u.id)) return removeSub(u.id, u.name || u.email);
+    if (!confirm((u.name || u.email) + " কে সাব-অ্যাডমিন বানাবেন? সে শুধু পেমেন্ট অ্যাপ্রুভ/বাতিল করতে পারবে।")) return;
+    try {
+      await setDoc(doc(db, "subadmins", u.id), { name: u.name || u.email || "Sub-admin", email: u.email || "", addedAt: serverTimestamp(), addedBy: me.uid });
+      toast("সাব-অ্যাডমিন বানানো হয়েছে।");
+    } catch(e){ console.error(e); toast("হয়নি: " + (e.code || e.message)); }
+    loadProcessed(); loadUsers();
+  }
+  loadProcessed();
+
+  // ইউজার তালিকা
+  let users = [];
+  const typed = new Map(); // uid -> ইনপুটের লেখা (রিফ্রেশে মুছে না যাওয়ার জন্য)
+  async function loadUsers(){
+    if (role !== "admin") return;
+    $("list").textContent = "লোড হচ্ছে…";
+    try { await loadSubs(); } catch(e){ console.error(e); }
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      $("ucount").textContent = bn(users.length);
+      render();
+    } catch(e){
+      console.error(e);
+      toast("ইউজার তালিকা পড়া যায়নি: " + (e.code || e.message));
+      $("list").textContent = "তালিকা লোড হয়নি — এরর: " + (e.code || e.message);
+    }
+  }
+  $("reloadBtn").onclick = loadUsers;
+  loadUsers();
+  $("q").addEventListener("input", render);
+
+  function render(){
+    const q = $("q").value.trim().toLowerCase();
+    const box = $("list");
+    box.textContent = "";
+    users
+      .filter(u => !q || (u.name||"").toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q))
+      .sort((a,b) => (a.name||a.email||"").localeCompare(b.name||b.email||""))
+      .forEach(u => {
+        const row = document.createElement("div"); row.className = "user";
+
+        const n = document.createElement("div"); n.className = "uname"; n.textContent = u.name || "(নাম নেই)";
+        const m = document.createElement("div"); m.className = "umail"; m.textContent = u.email || u.id;
+
+        const meta = document.createElement("div"); meta.className = "meta";
+        const c = document.createElement("span"); c.textContent = "ক্রেডিট: " + bn(u.credit);
+        const t = document.createElement("span"); t.textContent = "সফল API কল: " + bn(u.totalSuccess);
+        meta.append(c, t);
+
+        const ctl = document.createElement("div"); ctl.className = "row";
+        const inp = document.createElement("input"); inp.type = "number"; inp.className = "num"; inp.min = "1"; inp.step = "1"; inp.placeholder = "পরিমাণ";
+        inp.value = typed.get(u.id) || "";
+        inp.addEventListener("input", () => typed.set(u.id, inp.value));
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "go"; btn.textContent = "Add Credit";
+        btn.onclick = () => addCredit(u, inp, btn);
+        const sb = document.createElement("button"); sb.type = "button"; sb.className = "go";
+        sb.style.background = subs.has(u.id) ? "#b3261e" : "#245333";
+        sb.textContent = subs.has(u.id) ? "Sub-admin সরান" : "Sub-admin বানান";
+        sb.onclick = () => toggleSub(u);
+        ctl.append(inp, btn, sb);
+
+        row.append(n, m, meta, ctl);
+        box.append(row);
+      });
+    if (!box.children.length) box.textContent = "কোনো ইউজার পাওয়া যায়নি।";
+  }
+
+  async function addCredit(u, inp, btn){
+    const amt = parseInt(inp.value, 10);
+    if (!(amt > 0)) return toast("১ বা তার বেশি সংখ্যা লিখুন।");
+    if (!confirm((u.name || u.email) + " কে " + amt + " ক্রেডিট যোগ করবেন?")) return;
+    btn.disabled = true;
+    const uref = doc(db, "users", u.id);
+    const href = doc(collection(db, "users", u.id, "paymentHistory"));
+    try {
+      await runTransaction(db, async tx => {
+        const s = await tx.get(uref);
+        tx.update(uref, { credit: (s.data()?.credit || 0) + amt });
+        tx.set(href, { type: "admin", method: "Manual (Admin)", amount: amt, createdAt: serverTimestamp(), by: me.uid });
+      });
+      typed.delete(u.id); inp.value = ""; loadUsers();
+      toast(bn(amt) + " ক্রেডিট যোগ হয়েছে।");
+    } catch(e){ console.error(e); toast("যোগ হয়নি: " + (e.code || e.message)); }
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+  </html>
