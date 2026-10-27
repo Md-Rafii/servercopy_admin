@@ -32,7 +32,7 @@ button.go:disabled{opacity:.6}
 .umail{font-size:12px;color:#777;word-break:break-all}
 .meta{display:flex;gap:16px;font-size:13px;margin:6px 0 8px}
 .hint{font-size:12px;color:#777;margin:6px 0 0}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:6px;font-size:14px;z-index:9}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:6px;font-size:14px;z-index:9999}
 #gate{position:fixed;inset:0;background:#eee;display:grid;place-items:center;font-weight:bold;color:#555;z-index:8}
 
 /* Modal Overlay Styles */
@@ -60,7 +60,6 @@ button.go:disabled{opacity:.6}
       <div class="stat">মোট ইউজার<b id="ucount">…</b></div>
     </div>
 
-    <!-- ইউজার লিস্ট, পেমেন্ট হিস্ট্রি, সাব-অ্যাডমিন রিপোর্ট ও পেমেন্ট সেটিংস ওপেন করার মেইন বাটন সেকশন -->
     <div class="box mainOnly" style="display:flex; gap:10px; flex-wrap:wrap;">
       <button id="openUsersBtn" class="go" type="button" style="flex:1; padding:14px; font-size:14px;">👥 ইউজার তালিকা</button>
       <button id="openHistoryBtn" class="go" type="button" style="flex:1; padding:14px; font-size:14px; background:#126b3c;">🧾 পেমেন্ট হিস্ট্রি</button>
@@ -113,10 +112,19 @@ button.go:disabled{opacity:.6}
 <div class="modal-overlay" id="historyModal">
   <div class="modal-box">
     <div class="modal-header">
-      <h3>টোকেন কেনার তালিকা (সর্বশেষ ২০টা)</h3>
+      <h3>পেমেন্ট হিস্ট্রি</h3>
       <button class="modal-close" id="closeHistoryModal">বন্ধ করুন</button>
     </div>
+    <select id="hFilter" style="padding:10px;border:1px solid #ccc;border-radius:5px;width:100%;margin-bottom:10px">
+      <option value="">সব (পেন্ডিং, অ্যাপ্রুভ, বাতিল)</option>
+      <option value="approved">শুধু অ্যাপ্রুভ</option>
+      <option value="pending">শুধু পেন্ডিং</option>
+      <option value="rejected">শুধু বাতিল</option>
+    </select>
+    <div id="hSummary" style="margin-bottom:12px"></div>
     <div id="purList"></div>
+    <h3 style="margin:18px 0 8px;font-size:15px;color:#245333;border-top:2px solid #eee;padding-top:12px">টোকেন কেনার তালিকা (সর্বশেষ ২০টা)</h3>
+    <div id="tokList"></div>
   </div>
 </div>
 
@@ -133,7 +141,7 @@ button.go:disabled{opacity:.6}
     <div id="subStats">লোড হচ্ছে…</div>
     <div class="row" style="margin:14px 0 8px"><select id="repFilter" style="padding:10px;border:1px solid #ccc;border-radius:5px;flex:1"><option value="">সব প্রসেস করা রিকোয়েস্ট</option></select></div>
     <div id="repList"></div>
-    <p class="hint" style="margin-top:10px;">নতুন সাব-অ্যাডমিন বানাতে ইউজার তালিকা থেকে ইউজারের পাশের অপشن ব্যবহার করুন। সাব-অ্যাডমিন শুধু পেমেন্ট অ্যাপ্রুভ/বাতিল করতে পারবে।</p>
+    <p class="hint" style="margin-top:10px;">নতুন সাব-অ্যাডমিন বানাতে ইউজার তালিকা থেকে ইউজারের পাশের অপশন ব্যবহার করুন। সাব-অ্যাডমিন শুধু পেমেন্ট অ্যাপ্রুভ/বাতিল করতে পারবে।</p>
   </div>
 </div>
 
@@ -175,12 +183,12 @@ const priceRef = doc(db, "settings", "pricing");
 
 $("logoutBtn").onclick = logout;
 
-// Modal Toggles
-$("openUsersBtn").onclick = () => { $("userModal").style.display = "flex"; loadUsers(); };
+// Modal Toggles (ফাংশনগুলো window থেকে পাওয়া যায়, নিচে start() এর শেষে বসানো হয়েছে)
+$("openUsersBtn").onclick = () => { $("userModal").style.display = "flex"; window.loadUsers(); };
 $("closeUserModal").onclick = () => { $("userModal").style.display = "none"; };
-$("openHistoryBtn").onclick = () => { $("historyModal").style.display = "flex"; loadPurchases(); };
+$("openHistoryBtn").onclick = () => { $("historyModal").style.display = "flex"; window.loadPayHistory(); window.loadPurchases(); };
 $("closeHistoryModal").onclick = () => { $("historyModal").style.display = "none"; };
-$("openSubReportBtn").onclick = () => { $("subReportModal").style.display = "flex"; loadProcessed(); };
+$("openSubReportBtn").onclick = () => { $("subReportModal").style.display = "flex"; window.loadProcessed(); };
 $("closeSubReportModal").onclick = () => { $("subReportModal").style.display = "none"; };
 $("openPaySettingsBtn").onclick = () => { $("payModal").style.display = "flex"; };
 $("closePayModal").onclick = () => { $("payModal").style.display = "none"; };
@@ -268,7 +276,7 @@ function start(){
     for (const n of [bk, ng]) if (n && !/^01[0-9]{9}$/.test(n)) return toast("নম্বর ১১ সংখ্যার হতে হবে (01XXXXXXXXX)।");
     $("paySave").disabled = true;
     try {
-      await setDoc(payRef, { bkashNumber: bk, bkashType: $("bkType").value, nagadNumber: ng, nagadType: $("nagadType").value, minAmount: mn }, { merge: true });
+      await setDoc(payRef, { bkashNumber: bk, bkashType: $("bkType").value, nagadNumber: ng, nagadType: $("ngType").value, minAmount: mn }, { merge: true });
       toast("পেমেন্ট সেটিংস সেভ হয়েছে।");
       $("payModal").style.display = "none";
     } catch(e){ console.error(e); toast("সেভ হয়নি: " + (e.code || e.message)); }
@@ -350,16 +358,72 @@ function start(){
 
   let subs = new Map();
   let processed = [];
-  let purchases = [], purLoaded = false;
+
+  // ---------- পেমেন্ট হিস্ট্রি (সব রিকোয়েস্ট) ----------
+  let hData = [];
+  async function loadPayHistory(){
+    if (role !== "admin") return;
+    $("purList").textContent = "লোড হচ্ছে…";
+    $("hSummary").textContent = "";
+    try {
+      const sn = await getDocs(collection(db, "paymentRequests"));
+      hData = sn.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      renderHistory();
+    } catch(e){ console.error(e); $("purList").textContent = "লোড হয়নি — এরর: " + (e.code || e.message); }
+  }
+
+  function renderHistory(){
+    // ১) অ্যাকাউন্ট অনুযায়ী মোট অ্যাপ্রুভ
+    const by = new Map(); let grand = 0, gcount = 0;
+    hData.forEach(r => {
+      if (r.status !== "approved") return;
+      const k = r.uid || "?";
+      if (!by.has(k)) by.set(k, { name: r.name || "(নাম নেই)", email: r.email || "", n: 0, amt: 0 });
+      const x = by.get(k); x.n++; x.amt += Number(r.amount) || 0;
+      grand += Number(r.amount) || 0; gcount++;
+    });
+    const sm = $("hSummary"); sm.textContent = "";
+    const tot = document.createElement("div"); tot.className = "uname";
+    tot.textContent = "মোট অ্যাপ্রুভ: ৳" + bn(grand) + " (" + bn(gcount) + " টা)";
+    sm.append(tot);
+    [...by.values()].sort((a, b) => b.amt - a.amt).forEach(x => {
+      const row = document.createElement("div"); row.className = "user";
+      const n = document.createElement("div"); n.className = "uname"; n.textContent = x.name + " — ৳" + bn(x.amt);
+      const m = document.createElement("div"); m.className = "umail"; m.textContent = x.email + " | " + bn(x.n) + " বার অ্যাপ্রুভ";
+      row.append(n, m); sm.append(row);
+    });
+
+    // ২) পূর্ণ তালিকা
+    const f = $("hFilter").value;
+    const list = hData.filter(r => !f || r.status === f);
+    const box = $("purList"); box.textContent = "";
+    const icon = { approved: "✅ ", rejected: "❌ ", pending: "⏳ " };
+    list.slice(0, 100).forEach(r => {
+      const row = document.createElement("div"); row.className = "user";
+      const n = document.createElement("div"); n.className = "uname";
+      n.textContent = (icon[r.status] || "") + (r.name || r.email || "") + " — ৳" + bn(r.amount);
+      const m = document.createElement("div"); m.className = "umail"; m.textContent = r.email || r.uid;
+      const meta = document.createElement("div"); meta.className = "meta"; meta.style.flexWrap = "wrap";
+      [r.method, "TrxID: " + r.trxId, "প্রেরক: " + r.senderNumber,
+       r.reviewedByName ? "কাজ করেছেন: " + r.reviewedByName : "",
+       r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString("bn-BD") : ""
+      ].filter(Boolean).forEach(t => { const sp = document.createElement("span"); sp.textContent = t; meta.append(sp); });
+      row.append(n, m, meta); box.append(row);
+    });
+    if (!list.length) box.textContent = "কোনো রেকর্ড নেই।";
+  }
+  $("hFilter").onchange = renderHistory;
+
+  // ---------- টোকেন কেনার তালিকা ----------
   async function loadPurchases(){
     if (role !== "admin") return;
+    const box = $("tokList");
     try {
       const sn = await getDocs(collection(db, "tokenPurchases"));
-      purchases = sn.docs.map(d => ({ id: d.id, ...d.data() }))
+      const purchases = sn.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      purLoaded = true;
-      
-      const box = $("purList"); box.textContent = "";
+      box.textContent = "";
       purchases.slice(0, 20).forEach(x => {
         const row = document.createElement("div"); row.className = "user";
         const n = document.createElement("div"); n.className = "uname"; n.textContent = bn(x.qty) + " টা × " + money(x.unitCost) + " = " + money(x.total);
@@ -367,7 +431,7 @@ function start(){
         row.append(n, m); box.append(row);
       });
       if (!purchases.length) box.textContent = "এখনো কোনো টোকেন কেনার হিসাব নেই।";
-    } catch(e){ console.error(e); $("purList").textContent = "হিসাব লোড হয়নি — এরর: " + (e.code || e.message); }
+    } catch(e){ console.error(e); box.textContent = "হিসাব লোড হয়নি — এরর: " + (e.code || e.message); }
   }
 
   async function loadSubs(){
@@ -530,6 +594,9 @@ function start(){
     } catch(e){ console.error(e); toast("যোগ হয়নি: " + (e.code || e.message)); }
     btn.disabled = false;
   }
+
+  // বাইরের বাটনগুলো যাতে ফাংশন খুঁজে পায়
+  Object.assign(window, { loadUsers, loadPurchases, loadProcessed, loadPayHistory });
 }
 </script>
 </body>
