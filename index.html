@@ -60,9 +60,10 @@ button.go:disabled{opacity:.6}
       <div class="stat">মোট ইউজার<b id="ucount">…</b></div>
     </div>
 
-    <!-- ইউজার লিস্ট ও পেমেন্ট সেটিংস ওপেন করার মেইন বাটন সেকশন -->
+    <!-- ইউজার লিস্ট, পেমেন্ট হিস্ট্রি ও পেমেন্ট সেটিংস ওপেন করার মেইন বাটন সেকশন -->
     <div class="box mainOnly" style="display:flex; gap:10px; flex-wrap:wrap;">
-      <button id="openUsersBtn" class="go" type="button" style="flex:1; padding:14px; font-size:15px;">👥 ইউজার তালিকা দেখুন</button>
+      <button id="openUsersBtn" class="go" type="button" style="flex:1; padding:14px; font-size:15px;">👥 ইউজার তালিকা</button>
+      <button id="openHistoryBtn" class="go" type="button" style="flex:1; padding:14px; font-size:15px; background:#126b3c;">🧾 পেমেন্ট হিস্ট্রি</button>
       <button id="openPaySettingsBtn" class="go" type="button" style="flex:1; padding:14px; font-size:15px; background:#245333;">⚙️ পেমেন্ট সেটিংস</button>
     </div>
 
@@ -79,8 +80,6 @@ button.go:disabled{opacity:.6}
         <div class="stat" id="accNetCard">লাভ / ক্ষতি<b id="accNet">…</b></div>
       </div>
       <p class="hint" id="accNote"></p>
-      <h3 style="margin:14px 0 6px;font-size:14px">টোকেন কেনার তালিকা (সর্বশেষ ২০টা)</h3>
-      <div id="purList"></div>
     </div>
 
     <div class="box mainOnly">
@@ -127,6 +126,17 @@ button.go:disabled{opacity:.6}
   </div>
 </div>
 
+<!-- পেমেন্ট হিস্ট্রি মডাল -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>টোকেন কেনার তালিকা (সর্বশেষ ২০টা)</h3>
+      <button class="modal-close" id="closeHistoryModal">বন্ধ করুন</button>
+    </div>
+    <div id="purList"></div>
+  </div>
+</div>
+
 <!-- পেমেন্ট সেটিংস মডাল -->
 <div class="modal-overlay" id="payModal">
   <div class="modal-box">
@@ -168,6 +178,8 @@ $("logoutBtn").onclick = logout;
 // Modal Toggles
 $("openUsersBtn").onclick = () => { $("userModal").style.display = "flex"; loadUsers(); };
 $("closeUserModal").onclick = () => { $("userModal").style.display = "none"; };
+$("openHistoryBtn").onclick = () => { $("historyModal").style.display = "flex"; loadPurchases(); };
+$("closeHistoryModal").onclick = () => { $("historyModal").style.display = "none"; };
 $("openPaySettingsBtn").onclick = () => { $("payModal").style.display = "flex"; };
 $("closePayModal").onclick = () => { $("payModal").style.display = "none"; };
 
