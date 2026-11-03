@@ -82,12 +82,18 @@ button.go:disabled{opacity:.6}
       <p class="hint">প্রতিটি সফল Search এ স্টক থেকে ১টা করে কমবে। স্টক 0 হলে ইউজাররা Search করতে পারবে না।</p>
     </div>
 
+    <!-- পরিবর্তিত: সার্চ ১ ও সার্চ ২ এর প্রাইজ সেটিংস -->
     <div class="box mainOnly">
-      <h3>Search এর চার্জ</h3>
+      <h3>Search এর চার্জ সেটিংস</h3>
+      <div class="row" style="margin-bottom:12px;">
+        <span>Server 1 চার্জ: <b id="priceNow">…</b> ক্রেডিট</span>
+        <input id="priceNew" class="num" type="number" min="0" step="1" placeholder="নতুন মূল্য">
+        <button id="priceBtn" class="go" type="button">Update Server 1</button>
+      </div>
       <div class="row">
-        <span>বর্তমান: <b id="priceNow">…</b> ক্রেডিট</span>
-        <input id="priceNew" class="num" type="number" min="0" step="1" placeholder="নতুন">
-        <button id="priceBtn" class="go" type="button">Update</button>
+        <span>Server 2 চার্জ: <b id="priceNow2">…</b> ক্রেডিট</span>
+        <input id="priceNew2" class="num" type="number" min="0" step="1" placeholder="নতুন মূল্য">
+        <button id="priceBtn2" class="go" type="button" style="background:#126b3c;">Update Server 2</button>
       </div>
     </div>
   </main>
@@ -183,7 +189,6 @@ const priceRef = doc(db, "settings", "pricing");
 
 $("logoutBtn").onclick = logout;
 
-// Modal Toggles (ফাংশনগুলো window থেকে পাওয়া যায়, নিচে start() এর শেষে বসানো হয়েছে)
 $("openUsersBtn").onclick = () => { $("userModal").style.display = "flex"; window.loadUsers(); };
 $("closeUserModal").onclick = () => { $("userModal").style.display = "none"; };
 $("openHistoryBtn").onclick = () => { $("historyModal").style.display = "flex"; window.loadPayHistory(); window.loadPurchases(); };
@@ -224,6 +229,7 @@ function start(){
   document.querySelectorAll(".mainOnly").forEach(el => el.hidden = role !== "admin");
   if (role === "sub") $("ttl").textContent = "Sub-Admin Panel";
   $("whoami").textContent = (role === "admin" ? "অ্যাডমিন" : "সাব-অ্যাডমিন (" + subName + ")") + " | " + (me.email || "") + " | UID: " + me.uid;
+  
   if (role === "admin") {
   onSnapshot(stockRef, s => {
     const d = s.data() || {};
@@ -252,14 +258,42 @@ function start(){
     $("stockBtn").disabled = false;
   };
 
-  onSnapshot(priceRef, s => { $("priceNow").textContent = s.exists() ? bn(s.data().searchPrice) : "সেট নেই"; });
+  // লাইভ প্রাইস আপডেট রিসিভ (Server 1 এবং Server 2)
+  onSnapshot(priceRef, s => { 
+    if(s.exists()){
+      const data = s.data();
+      $("priceNow").textContent = data.searchPrice !== undefined ? bn(data.searchPrice) : "সেট নেই";
+      $("priceNow2").textContent = data.searchPrice2 !== undefined ? bn(data.searchPrice2) : "সেট নেই";
+    } else {
+      $("priceNow").textContent = "সেট নেই";
+      $("priceNow2").textContent = "সেট নেই";
+    }
+  });
+
+  // Server 1 প্রাইস আপডেট
   $("priceBtn").onclick = async () => {
     const n = parseInt($("priceNew").value, 10);
     if (!(n >= 0)) return toast("সঠিক সংখ্যা লিখুন।");
     $("priceBtn").disabled = true;
-    try { await setDoc(priceRef, { searchPrice: n }, { merge: true }); $("priceNew").value = ""; toast("চার্জ আপডেট হয়েছে।"); }
-    catch(e){ console.error(e); toast("আপডেট হয়নি: " + (e.code || e.message)); }
+    try { 
+      await setDoc(priceRef, { searchPrice: n }, { merge: true }); 
+      $("priceNew").value = ""; 
+      toast("Server 1 চার্জ আপডেট হয়েছে।"); 
+    } catch(e){ console.error(e); toast("আপডেট হয়নি: " + (e.code || e.message)); }
     $("priceBtn").disabled = false;
+  };
+
+  // Server 2 প্রাইস আপডেট (নতুন যুক্ত করা হয়েছে)
+  $("priceBtn2").onclick = async () => {
+    const n = parseInt($("priceNew2").value, 10);
+    if (!(n >= 0)) return toast("সঠিক সংখ্যা লিখুন।");
+    $("priceBtn2").disabled = true;
+    try { 
+      await setDoc(priceRef, { searchPrice2: n }, { merge: true }); 
+      $("priceNew2").value = ""; 
+      toast("Server 2 চার্জ আপডেট হয়েছে।"); 
+    } catch(e){ console.error(e); toast("আপডেট হয়নি: " + (e.code || e.message)); }
+    $("priceBtn2").disabled = false;
   };
 
   const payRef = doc(db, "settings", "payment");
@@ -374,7 +408,6 @@ function start(){
   }
 
   function renderHistory(){
-    // ১) অ্যাকাউন্ট অনুযায়ী মোট অ্যাপ্রুভ
     const by = new Map(); let grand = 0, gcount = 0;
     hData.forEach(r => {
       if (r.status !== "approved") return;
@@ -394,7 +427,6 @@ function start(){
       row.append(n, m); sm.append(row);
     });
 
-    // ২) পূর্ণ তালিকা
     const f = $("hFilter").value;
     const list = hData.filter(r => !f || r.status === f);
     const box = $("purList"); box.textContent = "";
@@ -595,7 +627,6 @@ function start(){
     btn.disabled = false;
   }
 
-  // বাইরের বাটনগুলো যাতে ফাংশন খুঁজে পায়
   Object.assign(window, { loadUsers, loadPurchases, loadProcessed, loadPayHistory });
 }
 </script>
