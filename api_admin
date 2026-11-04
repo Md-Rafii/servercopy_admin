@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Panel - API Reseller</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7f6;font-family:Arial,sans-serif;color:#333}
+.container{max-width:1100px;margin:20px auto;background:white;padding:15px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+h2, h3{color:#245333;margin-top:0;font-size:20px}
+p{font-size:14px;color:#555}
+.table-responsive{width:100%;overflow-x:auto;margin-top:15px}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th, td{padding:10px;border:1px solid #ddd;text-align:left;font-size:13px}
+th{background:#126b3c;color:white}
+button{padding:6px 12px;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:12px;margin:2px 0}
+.btn-approve{background:#2e7d32;color:white}
+.btn-approve:hover{background:#1b5e20}
+.btn-reject{background:#c62828;color:white}
+.btn-reject:hover{background:#b71c1c}
+.btn-edit{background:#0288d1;color:white}
+.btn-edit:hover{background:#01579b}
+.status-approved{color:#2e7d32;font-weight:bold}
+.status-rejected{color:#c62828;font-weight:bold}
+.status-pending{color:#ef6c00;font-weight:bold}
+.section-box{margin-top:25px;background:#fafafa;padding:15px;border:1px solid #ddd;border-radius:8px}
+.pricing-flex{display:flex;gap:10px;align-items:center;max-width:400px;margin-top:10px}
+.pricing-flex input{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="container">
+ <h2>👑 Admin Panel - Dashboard</h2>
+ <p>রিচার্জ রিকোয়েস্ট ম্যানেজ করুন, ইউজারদের টোকেন এডিট করুন এবং প্রতি টোকেনের মূল্য নিয়ন্ত্রণ করুন।</p>
+
+ <div class="section-box">
+  <h3>⚙️ Token Pricing Control</h3>
+  <p>প্রতি টোকেনের দাম (BDT) সেট করুন। রিচার্জ এপ্রুভ করার সময় এই রেট অনুযায়ী টোকেন যোগ হবে।</p>
+  <div class="pricing-flex">
+   <input type="number" id="tokenPriceInput" placeholder="Token price (e.g. 10)">
+   <button class="btn-approve" id="savePriceBtn">Save Price</button>
+  </div>
+ </div>
+
+ <div class="section-box">
+  <h3>📥 Recharge Requests</h3>
+  <div class="table-responsive">
+   <table>
+    <thead>
+     <tr>
+      <th>User Email</th>
+      <th>Method & Number</th>
+      <th>Amount</th>
+      <th>TrxID</th>
+      <th>Status</th>
+      <th>Action</th>
+     </tr>
+    </thead>
+    <tbody id="rechargeTableBody">
+     <tr><td colspan="6" style="text-align:center;">লোড হচ্ছে...</td></tr>
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ <div class="section-box">
+  <h3>👥 User List & Token Management</h3>
+  <div class="table-responsive">
+   <table>
+    <thead>
+     <tr>
+      <th>User Email</th>
+      <th>Current Token</th>
+      <th>API Key</th>
+      <th>Action</th>
+     </tr>
+    </thead>
+    <tbody id="userTableBody">
+     <tr><td colspan="4" style="text-align:center;">লোড হচ্ছে...</td></tr>
+    </tbody>
+   </table>
+  </div>
+ </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, increment, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAJup5G9vjJE99eGHyCx2dGIPltNWwUq2o",
+  authDomain: "ervercopy.firebaseapp.com",
+  projectId: "ervercopy",
+  storageBucket: "ervercopy.firebasestorage.app",
+  messagingSenderId: "756178054821",
+  appId: "1:756178054821:web:c503990e2c817ff92ba74c",
+  measurementId: "G-E55T9WEF61"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function loadTokenPrice() {
+ try {
+  const priceRef = doc(db, "settings", "pricing");
+  const snap = await getDoc(priceRef);
+  if (snap.exists()) {
+   document.getElementById("tokenPriceInput").value = snap.data().tokenPrice || 10;
+  } else {
+   document.getElementById("tokenPriceInput").value = 10;
+  }
+ } catch (err) {
+  console.error(err);
+ }
+}
+
+document.getElementById("savePriceBtn").addEventListener("click", async () => {
+ const newPrice = Number(document.getElementById("tokenPriceInput").value);
+ if (isNaN(newPrice) || newPrice <= 0) {
+  alert("সঠিক মূল্য দিন।");
+  return;
+ }
+ try {
+  await setDoc(doc(db, "settings", "pricing"), { tokenPrice: newPrice }, { merge: true });
+  alert("টোকেন প্রাইস সফলভাবে আপডেট হয়েছে!");
+ } catch (err) {
+  alert("ত্রুটি: " + err.message);
+ }
+});
+
+async function loadRecharges() {
+ const tbody = document.getElementById("rechargeTableBody");
+ try {
+  const querySnapshot = await getDocs(collection(db, "recharges"));
+  if (querySnapshot.empty) {
+   tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">কোনো রিচার্জ রিকোয়েস্ট নেই।</td></tr>`;
+   return;
+  }
+
+  let html = "";
+  querySnapshot.forEach((resDoc) => {
+   const data = resDoc.data();
+   const id = resDoc.id;
+   
+   let statusBadge = `<span class="status-pending">Pending</span>`;
+   if (data.status === "approved") statusBadge = `<span class="status-approved">Approved</span>`;
+   if (data.status === "rejected") statusBadge = `<span class="status-rejected">Rejected</span>`;
+
+   let actionBtns = data.status === "pending" ? `
+    <button class="btn-approve" onclick="handleAction('${id}', '${data.uid}', ${data.amount}, 'approve')">Approve</button>
+    <button class="btn-reject" onclick="handleAction('${id}', '${data.uid}', ${data.amount}, 'reject')">Reject</button>
+   ` : "Completed";
+
+   html += `
+    <tr>
+     <td>${data.email || 'N/A'}</td>
+     <td><b>${(data.method || '').toUpperCase()}</b><br>${data.sender || ''}</td>
+     <td>৳${data.amount}</td>
+     <td><code>${data.trxid}</code></td>
+     <td>${statusBadge}</td>
+     <td>${actionBtns}</td>
+    </tr>
+   `;
+  });
+  tbody.innerHTML = html;
+ } catch (error) {
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:red;">Error: ${error.message}</td></tr>`;
+ }
+}
+
+async function loadUsers() {
+ const tbody = document.getElementById("userTableBody");
+ try {
+  const querySnapshot = await getDocs(collection(db, "users"));
+  if (querySnapshot.empty) {
+   tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">কোনো ইউজার নেই।</td></tr>`;
+   return;
+  }
+
+  let html = "";
+  querySnapshot.forEach((userDoc) => {
+   const data = userDoc.data();
+   const uid = userDoc.id;
+   const email = data.email || 'N/A';
+   const credit = data.credit || 0;
+   const apiKey = data.apiKey || 'Not Generated';
+
+   html += `
+    <tr>
+     <td>${email}</td>
+     <td><b>🪙 ${credit} Tokens</b></td>
+     <td><code style="word-break:break-all;">${apiKey}</code></td>
+     <td><button class="btn-edit" onclick="editToken('${uid}', ${credit})">Edit Token</button></td>
+    </tr>
+   `;
+  });
+  tbody.innerHTML = html;
+ } catch (error) {
+  tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:red;">Error: ${error.message}</td></tr>`;
+ }
+}
+
+window.handleAction = async function(reqId, uid, amount, action) {
+ if (!confirm(`আপনি কি নিশ্চিত যে রিকোয়েস্টটি ${action === 'approve' ? 'এপ্রুভ' : 'রিজেক্ট'} করতে চান?`)) return;
+
+ try {
+  const reqRef = doc(db, "recharges", reqId);
+
+  if (action === 'approve') {
+   const priceSnap = await getDoc(doc(db, "settings", "pricing"));
+   const pricePerToken = priceSnap.exists() ? (priceSnap.data().tokenPrice || 10) : 10;
+
+   const tokensToAdd = Math.floor(amount / pricePerToken); 
+   const userRef = doc(db, "users", uid);
+   
+   const userSnap = await getDoc(userRef);
+   if (userSnap.exists()) {
+    await updateDoc(userRef, { credit: increment(tokensToAdd) });
+   } else {
+    await setDoc(userRef, { credit: tokensToAdd }, { merge: true });
+   }
+
+   await updateDoc(reqRef, { status: "approved" });
+   alert(`সফল! ইউজারকে ${tokensToAdd} টোকেন দেওয়া হয়েছে (প্রতি টোকেন ${pricePerToken} টাকা)।`);
+  } else {
+   await updateDoc(reqRef, { status: "rejected" });
+   alert("রিকোয়েস্টটি বাতিল করা হয়েছে।");
+  }
+
+  loadRecharges();
+  loadUsers();
+ } catch (error) {
+  alert("ত্রুটি: " + error.message);
+ }
+};
+
+window.editToken = async function(uid, currentCredit) {
+ const newCreditStr = prompt("নতুন টোকেন/ক্রেডিট পরিমাণ দিন:", currentCredit);
+ if (newCreditStr === null) return;
+ 
+ const newCredit = Number(newCreditStr);
+ if (isNaN(newCredit) || newCredit < 0) {
+  alert("সঠিক সংখ্যা দিন।");
+  return;
+ }
+
+ try {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, { credit: newCredit });
+  alert("টোকেন সফলভাবে আপডেট হয়েছে!");
+  loadUsers();
+ } catch (error) {
+  alert("ত্রুটি: " + error.message);
+ }
+};
+
+loadTokenPrice();
+loadRecharges();
+loadUsers();
+</script>
+
+</body>
+</html>
