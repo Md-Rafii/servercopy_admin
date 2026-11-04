@@ -26,14 +26,49 @@ button{padding:6px 12px;border:0;border-radius:4px;cursor:pointer;font-weight:bo
 .status-pending{color:#ef6c00;font-weight:bold}
 .section-box{margin-top:25px;background:#fafafa;padding:15px;border:1px solid #ddd;border-radius:8px}
 .pricing-flex{display:flex;gap:10px;align-items:center;max-width:400px;margin-top:10px}
-.pricing-flex input{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px}
+.pricing-flex input, .pricing-flex select{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px}
+.form-group{margin-bottom:10px}
+.form-group label{display:block;font-size:13px;font-weight:bold;margin-bottom:4px;color:#333}
 </style>
 </head>
 <body>
 
 <div class="container">
  <h2>👑 Admin Panel - Dashboard</h2>
- <p>রিচার্জ রিকোয়েস্ট ম্যানেজ করুন, ইউজারদের টোকেন এডিট করুন এবং প্রতি টোকেনের মূল্য নিয়ন্ত্রণ করুন।</p>
+ <p>রিচার্জ রিকোয়েস্ট ম্যানেজ করুন, ইউজারদের টোকেন এডিট করুন এবং পেমেন্ট নম্বর ও টোকেন মূল্য নিয়ন্ত্রণ করুন।</p>
+
+ <!-- নতুন যুক্ত করা পেমেন্ট নম্বর কন্ট্রোল সেকশন -->
+ <div class="section-box">
+  <h3>💳 Payment Numbers Control (বিকাশ ও নগদ নম্বর)</h3>
+  <p>ইউজারদের পেমেন্ট পেজে যে নম্বরগুলো দেখাবে তা এখান থেকে পরিবর্তন করুন।</p>
+  
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin-top: 10px;">
+   <div class="form-group">
+    <label>বিকাশ নম্বর</label>
+    <input type="text" id="bkashNumInput" placeholder="01XXXXXXXXX">
+   </div>
+   <div class="form-group">
+    <label>বিকাশ টাইপ</label>
+    <select id="bkashTypeInput">
+     <option value="personal">Personal</option>
+     <option value="agent">Agent</option>
+    </select>
+   </div>
+
+   <div class="form-group">
+    <label>নগদ নম্বর</label>
+    <input type="text" id="nagadNumInput" placeholder="01XXXXXXXXX">
+   </div>
+   <div class="form-group">
+    <label>নগদ টাইপ</label>
+    <select id="nagadTypeInput">
+     <option value="personal">Personal</option>
+     <option value="agent">Agent</option>
+    </select>
+   </div>
+  </div>
+  <button class="btn-approve" id="savePaymentBtn" style="margin-top:10px;">Save Payment Numbers</button>
+ </div>
 
  <div class="section-box">
   <h3>⚙️ Token Pricing Control</h3>
@@ -102,8 +137,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-async function loadTokenPrice() {
+// পেমেন্ট সেটিংস এবং টোকেন প্রাইস লোড করা
+async function loadSettings() {
  try {
+  // টোকেন প্রাইস লোড
   const priceRef = doc(db, "settings", "pricing");
   const snap = await getDoc(priceRef);
   if (snap.exists()) {
@@ -111,10 +148,41 @@ async function loadTokenPrice() {
   } else {
    document.getElementById("tokenPriceInput").value = 10;
   }
+
+  // পেমেন্ট নম্বর লোড
+  const payRef = doc(db, "settings", "payment");
+  const paySnap = await getDoc(payRef);
+  if (paySnap.exists()) {
+   const payData = paySnap.data();
+   document.getElementById("bkashNumInput").value = payData.bkashNumber || "";
+   document.getElementById("bkashTypeInput").value = payData.bkashType || "personal";
+   document.getElementById("nagadNumInput").value = payData.nagadNumber || "";
+   document.getElementById("nagadTypeInput").value = payData.nagadType || "personal";
+  }
  } catch (err) {
   console.error(err);
  }
 }
+
+// পেমেন্ট নম্বর সেভ করার বাটন ইভেন্ট
+document.getElementById("savePaymentBtn").addEventListener("click", async () => {
+ const bkashNumber = document.getElementById("bkashNumInput").value.trim();
+ const bkashType = document.getElementById("bkashTypeInput").value;
+ const nagadNumber = document.getElementById("nagadNumInput").value.trim();
+ const nagadType = document.getElementById("nagadTypeInput").value;
+
+ try {
+  await setDoc(doc(db, "settings", "payment"), {
+   bkashNumber: bkashNumber,
+   bkashType: bkashType,
+   nagadNumber: nagadNumber,
+   nagadType: nagadType
+  }, { merge: true });
+  alert("পেমেন্ট নম্বর সফলভাবে আপডেট হয়েছে!");
+ } catch (err) {
+  alert("ত্রুটি: " + err.message);
+ }
+});
 
 document.getElementById("savePriceBtn").addEventListener("click", async () => {
  const newPrice = Number(document.getElementById("tokenPriceInput").value);
@@ -256,7 +324,7 @@ window.editToken = async function(uid, currentCredit) {
  }
 };
 
-loadTokenPrice();
+loadSettings();
 loadRecharges();
 loadUsers();
 </script>
