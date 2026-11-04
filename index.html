@@ -50,7 +50,12 @@ button.go:disabled{opacity:.6}
 <div class="page">
   <header class="header">
     <h2 id="ttl">Admin Panel</h2>
-    <div class="row"><a href="https://md-rafii.github.io/amar_wallet/deshboard/index.html">Dashboard</a><button id="logoutBtn" type="button">Logout</button></div>
+    <!-- হেডার অংশে 'API Admin' বাটন যুক্ত করা হয়েছে -->
+    <div class="row">
+      <a href="api_admin.html">API Admin</a>
+      <a href="https://md-rafii.github.io/amar_wallet/deshboard/index.html">Dashboard</a>
+      <button id="logoutBtn" type="button">Logout</button>
+    </div>
   </header>
   <main>
     <p class="hint" id="whoami" style="margin:0 0 12px;word-break:break-all"></p>
@@ -82,7 +87,7 @@ button.go:disabled{opacity:.6}
       <p class="hint">প্রতিটি সফল Search এ স্টক থেকে ১টা করে কমবে। স্টক 0 হলে ইউজাররা Search করতে পারবে না।</p>
     </div>
 
-    <!-- পরিবর্তিত: সার্চ ১ ও সার্চ ২ এর প্রাইজ সেটিংস -->
+    <!-- সার্চ ১ ও সার্চ ২ এর প্রাইজ সেটিংস -->
     <div class="box mainOnly">
       <h3>Search এর চার্জ সেটিংস</h3>
       <div class="row" style="margin-bottom:12px;">
@@ -283,7 +288,7 @@ function start(){
     $("priceBtn").disabled = false;
   };
 
-  // Server 2 প্রাইস আপডেট (নতুন যুক্ত করা হয়েছে)
+  // Server 2 প্রাইস আপডেট
   $("priceBtn2").onclick = async () => {
     const n = parseInt($("priceNew2").value, 10);
     if (!(n >= 0)) return toast("সঠিক সংখ্যা লিখুন।");
@@ -393,7 +398,6 @@ function start(){
   let subs = new Map();
   let processed = [];
 
-  // ---------- পেমেন্ট হিস্ট্রি (সব রিকোয়েস্ট) ----------
   let hData = [];
   async function loadPayHistory(){
     if (role !== "admin") return;
@@ -447,7 +451,6 @@ function start(){
   }
   $("hFilter").onchange = renderHistory;
 
-  // ---------- টোকেন কেনার তালিকা ----------
   async function loadPurchases(){
     if (role !== "admin") return;
     const box = $("tokList");
