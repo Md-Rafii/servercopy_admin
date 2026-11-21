@@ -37,7 +37,7 @@ button{padding:6px 12px;border:0;border-radius:4px;cursor:pointer;font-weight:bo
  <h2>👑 Admin Panel - Dashboard</h2>
  <p>রিচার্জ রিকোয়েস্ট ম্যানেজ করুন, ইউজারদের টোকেন এডিট করুন এবং পেমেন্ট নম্বর ও টোকেন মূল্য নিয়ন্ত্রণ করুন।</p>
 
- <!-- নতুন যুক্ত করা পেমেন্ট নম্বর কন্ট্রোল সেকশন -->
+ <!-- পেমেন্ট নম্বর কন্ট্রোল সেকশন -->
  <div class="section-box">
   <h3>💳 Payment Numbers Control (বিকাশ ও নগদ নম্বর)</h3>
   <p>ইউজারদের পেমেন্ট পেজে যে নম্বরগুলো দেখাবে তা এখান থেকে পরিবর্তন করুন।</p>
@@ -70,13 +70,22 @@ button{padding:6px 12px;border:0;border-radius:4px;cursor:pointer;font-weight:bo
   <button class="btn-approve" id="savePaymentBtn" style="margin-top:10px;">Save Payment Numbers</button>
  </div>
 
+ <!-- টোকেন প্রাইস ও মিনিমাম রিচার্জ কন্ট্রোল সেকশন -->
  <div class="section-box">
-  <h3>⚙️ Token Pricing Control</h3>
-  <p>প্রতি টোকেনের দাম (BDT) সেট করুন। রিচার্জ এপ্রুভ করার সময় এই রেট অনুযায়ী টোকেন যোগ হবে।</p>
-  <div class="pricing-flex">
-   <input type="number" id="tokenPriceInput" placeholder="Token price (e.g. 10)">
-   <button class="btn-approve" id="savePriceBtn">Save Price</button>
+  <h3>⚙️ Token Pricing & Minimum Recharge Control</h3>
+  <p>প্রতি টোকেনের দাম (BDT) এবং মিনিমাম রিচার্জ পরিমাণ (BDT) সেট করুন।</p>
+
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin-top: 10px;">
+   <div class="form-group">
+    <label>প্রতি টোকেনের মূল্য (BDT)</label>
+    <input type="number" id="tokenPriceInput" min="1" placeholder="Token price (e.g. 10)">
+   </div>
+   <div class="form-group">
+    <label>মিনিমাম রিচার্জ (BDT)</label>
+    <input type="number" id="minRechargeInput" min="1" placeholder="Min recharge (e.g. 200)">
+   </div>
   </div>
+  <button class="btn-approve" id="savePriceBtn" style="margin-top:10px;">Save Pricing Settings</button>
  </div>
 
  <div class="section-box">
@@ -137,19 +146,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// পেমেন্ট সেটিংস এবং টোকেন প্রাইস লোড করা
 async function loadSettings() {
  try {
-  // টোকেন প্রাইস লোড
   const priceRef = doc(db, "settings", "pricing");
   const snap = await getDoc(priceRef);
   if (snap.exists()) {
-   document.getElementById("tokenPriceInput").value = snap.data().tokenPrice || 10;
+   const pData = snap.data();
+   document.getElementById("tokenPriceInput").value = pData.tokenPrice || 10;
+   document.getElementById("minRechargeInput").value = pData.minRecharge || 200;
   } else {
    document.getElementById("tokenPriceInput").value = 10;
+   document.getElementById("minRechargeInput").value = 200;
   }
 
-  // পেমেন্ট নম্বর লোড
   const payRef = doc(db, "settings", "payment");
   const paySnap = await getDoc(payRef);
   if (paySnap.exists()) {
@@ -164,7 +173,6 @@ async function loadSettings() {
  }
 }
 
-// পেমেন্ট নম্বর সেভ করার বাটন ইভেন্ট
 document.getElementById("savePaymentBtn").addEventListener("click", async () => {
  const bkashNumber = document.getElementById("bkashNumInput").value.trim();
  const bkashType = document.getElementById("bkashTypeInput").value;
@@ -186,13 +194,23 @@ document.getElementById("savePaymentBtn").addEventListener("click", async () => 
 
 document.getElementById("savePriceBtn").addEventListener("click", async () => {
  const newPrice = Number(document.getElementById("tokenPriceInput").value);
+ const minRecharge = Number(document.getElementById("minRechargeInput").value);
+
  if (isNaN(newPrice) || newPrice <= 0) {
-  alert("সঠিক মূল্য দিন।");
+  alert("সঠিক টোকেন মূল্য দিন।");
   return;
  }
+ if (isNaN(minRecharge) || minRecharge <= 0) {
+  alert("সঠিক মিনিমাম রিচার্জ পরিমাণ দিন।");
+  return;
+ }
+
  try {
-  await setDoc(doc(db, "settings", "pricing"), { tokenPrice: newPrice }, { merge: true });
-  alert("টোকেন প্রাইস সফলভাবে আপডেট হয়েছে!");
+  await setDoc(doc(db, "settings", "pricing"), {
+   tokenPrice: newPrice,
+   minRecharge: minRecharge
+  }, { merge: true });
+  alert("টোকেন প্রাইস এবং মিনিমাম রিচার্জ সফলভাবে আপডেট হয়েছে!");
  } catch (err) {
   alert("ত্রুটি: " + err.message);
  }
